@@ -10,3 +10,5 @@ The faster you were moving when you stubbed your toe, the higher the tier of the
 - The first tier reduces your movement speed by 75% for 65 seconds (configurable) and can be triggered by moving at walk speed.
 - The second tier does the same thing as the first tier, but it also disables sprinting for 20 seconds (configurable) and can be triggered by moving at sprint speed. This status effect decays into the first tier after after the initial 20 seconds of disabled sprint.
 - The third tier disables movement for 5 seconds (configurable) and can be triggered by moving faster than sprint speed. This tier decays into the second tier after the initial 5 seconds.
+
+![stubyourtoe](https://tenor.com/view/hisoka-hunter-x-hunter-sexy-hxh-anime-gif-19489936)
