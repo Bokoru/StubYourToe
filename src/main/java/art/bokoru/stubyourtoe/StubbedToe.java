@@ -133,11 +133,15 @@ public class StubbedToe extends MobEffect {
             speedAttribute.removeModifier(ATTRIBUTE_UUID);
         }
 
-        // Apply previous tier if available.
-        if (previousTier != null)
-        {
-            StubbedToe effect = (StubbedToe)previousTier.get();
-            entity.addEffect(new MobEffectInstance(effect, effect.getDuration(), 0, false, true, true));
+        // Check if the effect was removed by the clear command
+        if (!entity.getPersistentData().getBoolean("stubbed_toe_cleared")) {
+            // Apply previous tier if available.
+            if (previousTier != null) {
+                StubbedToe effect = (StubbedToe) previousTier.get();
+                entity.addEffect(new MobEffectInstance(effect, effect.getDuration(), 0, false, true, true));
+            }
+        } else {
+            entity.getPersistentData().remove("stubbed_toe_cleared");
         }
     }
 

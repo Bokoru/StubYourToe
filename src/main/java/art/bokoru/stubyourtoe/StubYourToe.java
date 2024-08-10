@@ -6,6 +6,7 @@ import com.alrex.parcool.common.action.impl.Roll;
 import com.alrex.parcool.common.capability.IStamina;
 import com.alrex.parcool.common.capability.Parkourability;
 
+import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -15,9 +16,11 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.CommandEvent;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -64,6 +67,22 @@ public class StubYourToe
         if (ModList.get().isLoaded("parcool"))
         {
             hasParcool = true;
+        }
+    }
+
+    @SubscribeEvent
+    public void onCommandExecuted(CommandEvent event) {
+        CommandSourceStack source = event.getParseResults().getContext().getSource();
+        if (source.getEntity() instanceof LivingEntity) {
+            LivingEntity entity = (LivingEntity) source.getEntity();
+            if (entity == null)
+                return;
+
+            // Check if the command is the clear command
+            String command = event.getParseResults().getReader().getString();
+            if (command.equalsIgnoreCase("/effect clear") || command.startsWith("/effect clear ")) {
+                entity.getPersistentData().putBoolean("stubbed_toe_cleared", true);
+            }
         }
     }
 
@@ -157,26 +176,24 @@ public class StubYourToe
                 Registry<DamageType> damageTypes = level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
                 Holder<DamageType> damageType = damageTypes.getHolderOrThrow(TOE_STUBBED);
 
-                // ParCool logic must be handled on the client, everything else is on the server.
-                if (player.level().isClientSide()) 
+                // Check if the parcool mod is available.
+                if (Config.enableRollOnStub && hasParcool)
                 {
-                    // Check if the parcool mod is available.
-                    if (Config.enableRollOnStub && hasParcool)
+                    // If so, trigger the roll action.
+                    Parkourability parkourability = Parkourability.get(player);
+                    if (parkourability != null)
                     {
-                        // If so, trigger the roll action.
-                        Parkourability parkourability = Parkourability.get(player);
-                        if (parkourability != null)
-                        {
-                            // Play the sound.
-                            // player.playSound(SoundEvents.ROLL.get(), 1.0f, 1.0f);
-                            
-                            // Start a roll.
-                            parkourability.getAdditionalProperties().onJump();
-                            parkourability.get(Dive.class).onJump(player, parkourability, IStamina.get(player));
-                        }
+                        // Play the sound.
+                        // player.playSound(SoundEvents.ROLL.get(), 1.0f, 1.0f);
+                        
+                        // Start a roll.
+                        parkourability.getAdditionalProperties().onJump();
+                        parkourability.get(Dive.class).onJump(player, parkourability, IStamina.get(player));
                     }
                 }
-                else
+                
+                // This logic can only be run on the server.
+                if (!player.level().isClientSide()) 
                 {
                     // Damage the player.
                     player.hurt(new DamageSource(damageType), 1);
