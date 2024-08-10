@@ -88,6 +88,7 @@ public class StubbedToe extends MobEffect {
                 if (modifier.getAmount() != speed)
                 {
                     speedAttribute.removeModifier(modifier);
+                    addModifier = true;
                 }
             }
 
