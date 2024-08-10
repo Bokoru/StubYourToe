@@ -59,6 +59,10 @@ public class StubYourToe
         if (player.level().isClientSide()) 
             return;
 
+        // Players in creative mode should not stub their toe.
+        if (player.isCreative())
+            return;
+
         // Don't stub the player's toe if they are not on the ground.
         if(!player.onGround()) 
             return;
