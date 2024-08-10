@@ -4,6 +4,10 @@ import java.util.UUID;
 
 import javax.annotation.Nonnull;
 
+import com.alrex.parcool.common.action.impl.Dive;
+import com.alrex.parcool.common.action.impl.Roll;
+import com.alrex.parcool.common.capability.Parkourability;
+
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -48,62 +52,72 @@ public class StubbedToe extends MobEffect {
                 return Config.tier3DurationTicks;
         }
     }
-    
+
     @Override
     public void applyEffectTick(@Nonnull LivingEntity entity, int amplifier) {
 
-        // Ensure only the highest tier of stubbed toe is active at any moment.
-        if (previousTier != null)
+        if (entity instanceof Player player)
         {
-            StubbedToe previous = (StubbedToe)previousTier.get();
-            if (entity.hasEffect(previous))
+            // Ensure the player is not sprinting if it is disabled.
+            if (disableSprint)
             {
-                entity.removeEffect(previous);
+                player.setSprinting(false);
             }
 
-            if (previous.previousTier != null)
+            // Ensure only the highest tier of stubbed toe is active at any moment.
+            if (previousTier != null)
             {
-                previous = (StubbedToe)previous.previousTier.get();
+                StubbedToe previous = (StubbedToe)previousTier.get();
                 if (entity.hasEffect(previous))
                 {
                     entity.removeEffect(previous);
                 }
-            }
-        }
 
-        // Ensure the correct speed modifier is applied.
-        AttributeInstance speedAttribute = entity.getAttribute(Attributes.MOVEMENT_SPEED);
-        if (speedAttribute != null)
-        {
-            double speed = disableMovement ? -1.0d : (-1.0d + Config.stubbedToeSpeedModifier);
-
-            boolean addModifier = false;
-            AttributeModifier modifier = speedAttribute.getModifier(ATTRIBUTE_UUID);
-            if (modifier == null)
-            {
-                addModifier = true;
-            }
-            else
-            {
-                if (modifier.getAmount() != speed)
+                if (previous.previousTier != null)
                 {
-                    speedAttribute.removeModifier(modifier);
-                    addModifier = true;
+                    previous = (StubbedToe)previous.previousTier.get();
+                    if (entity.hasEffect(previous))
+                    {
+                        entity.removeEffect(previous);
+                    }
                 }
             }
 
-            if (addModifier)
+            // Ensure the correct speed modifier is applied.
+            AttributeInstance speedAttribute = entity.getAttribute(Attributes.MOVEMENT_SPEED);
+            if (speedAttribute != null)
             {
-                AttributeModifier attribute = new AttributeModifier(ATTRIBUTE_UUID, "STUBBED_TOE", speed, Operation.MULTIPLY_TOTAL);
-                speedAttribute.addTransientModifier(attribute);
-            }
-        }
+                double speed = disableMovement ? -1.0d : (-1.0d + Config.stubbedToeSpeedModifier);
 
-        // Ensure the player is not sprinting if it is disabled.
-        if (disableSprint)
-        {
-            if (entity instanceof Player player) {
-                player.setSprinting(false);
+                boolean addModifier = false;
+                AttributeModifier modifier = speedAttribute.getModifier(ATTRIBUTE_UUID);
+                if (modifier == null) {
+                    addModifier = true;
+
+                    // Avoid adding speed modifier if the player is still doing a roll.
+                    if (StubYourToe.hasParcool)
+                    {
+                        Parkourability parkourability = Parkourability.get(player);
+                        if (parkourability != null) {
+                            if (parkourability.get(Dive.class).isDoing()) {
+                                addModifier = false;
+                            }
+                        }
+                    }
+                }
+                else {
+                    if (modifier.getAmount() != speed)
+                    {
+                        speedAttribute.removeModifier(modifier);
+                        addModifier = true;
+                    }
+                }
+
+                if (addModifier)
+                {
+                    AttributeModifier attribute = new AttributeModifier(ATTRIBUTE_UUID, "STUBBED_TOE", speed, Operation.MULTIPLY_TOTAL);
+                    speedAttribute.addTransientModifier(attribute);
+                }
             }
         }
     }

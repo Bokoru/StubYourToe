@@ -1,5 +1,11 @@
 package art.bokoru.stubyourtoe;
 
+import com.alrex.parcool.api.SoundEvents;
+import com.alrex.parcool.common.action.impl.Dive;
+import com.alrex.parcool.common.action.impl.Roll;
+import com.alrex.parcool.common.capability.IStamina;
+import com.alrex.parcool.common.capability.Parkourability;
+
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
@@ -15,9 +21,11 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig.Type;
+import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -36,14 +44,27 @@ public class StubYourToe
 
     public static final ResourceKey<DamageType> TOE_STUBBED = ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.of("stubyourtoe:toe_stubbed", ':'));
 
+    static boolean hasParcool;
+
     public StubYourToe()
     {
         ModLoadingContext.get().registerConfig(Type.COMMON, Config.SPEC, "stubyourtoe.toml");
         
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+        modEventBus.addListener(this::commonSetup);
         EFFECTS.register(modEventBus);
 
         MinecraftForge.EVENT_BUS.register(this);
+    }
+
+    private void commonSetup(final FMLCommonSetupEvent event)
+    {
+        // Check if the parcool mod is loaded
+        hasParcool = false;
+        if (ModList.get().isLoaded("parcool"))
+        {
+            hasParcool = true;
+        }
     }
 
     @SubscribeEvent
@@ -55,12 +76,14 @@ public class StubYourToe
         // Get the player to test for the movement of.
         Player player = playerTickEvent.player;
 
-        // This logic should only be handled on the server.
-        if (player.level().isClientSide()) 
-            return;
-
         // Players in creative mode should not stub their toe.
         if (player.isCreative())
+            return;
+
+        // Don't stub the player's toe if their toe is already stubbed.
+        if (player.hasEffect(STUBBED_TOE_TIER1.get()) ||
+            player.hasEffect(STUBBED_TOE_TIER2.get()) ||
+            player.hasEffect(STUBBED_TOE_TIER3.get()))
             return;
 
         // Don't stub the player's toe if they are not on the ground.
@@ -70,6 +93,17 @@ public class StubYourToe
         // Don't stub the player's toe if they are sneaking and stubbing while sneaking is disable.
         if (!Config.enableSneakStub && player.isCrouching())
             return;
+
+        // Don't stub the player's toe if they are in the middle of a roll. 
+        if (hasParcool)
+        {
+            Parkourability parkourability = Parkourability.get(player);
+            if (parkourability != null)
+            {
+                if(parkourability.get(Dive.class).isDoing())
+                    return;
+            }
+        }
 
         // Track previous position
         double prevX = player.getPersistentData().getDouble("stubToe_prevX");
@@ -87,7 +121,7 @@ public class StubYourToe
         double deltaZ = currentZ - prevZ;
 
         boolean hasMovedHorizontally = prevX != currentX || prevZ != currentZ;
-        boolean hasSteppedUp = deltaY > 0;
+        boolean hasSteppedUp = deltaX + deltaZ != 0 && deltaY > 0; // Only stub on vertical movement if also moving horizontally.
 
         // If the player has moved over the edge of a block, or stepped up from a lower Y.
         if (hasMovedHorizontally || hasSteppedUp) {
@@ -123,12 +157,34 @@ public class StubYourToe
                 Registry<DamageType> damageTypes = level.registryAccess().registryOrThrow(Registries.DAMAGE_TYPE);
                 Holder<DamageType> damageType = damageTypes.getHolderOrThrow(TOE_STUBBED);
 
-                // Damage the player.
-                player.hurt(new DamageSource(damageType), 1);
-
-                // Create and apply the effect.
-                MobEffectInstance effectInstance = new MobEffectInstance(effect, effect.getDuration(), 0, false, true, true);
-                player.addEffect(effectInstance);
+                // ParCool logic must be handled on the client, everything else is on the server.
+                if (player.level().isClientSide()) 
+                {
+                    // Check if the parcool mod is available.
+                    if (Config.enableRollOnStub && hasParcool)
+                    {
+                        // If so, trigger the roll action.
+                        Parkourability parkourability = Parkourability.get(player);
+                        if (parkourability != null)
+                        {
+                            // Play the sound.
+                            // player.playSound(SoundEvents.ROLL.get(), 1.0f, 1.0f);
+                            
+                            // Start a roll.
+                            parkourability.getAdditionalProperties().onJump();
+                            parkourability.get(Dive.class).onJump(player, parkourability, IStamina.get(player));
+                        }
+                    }
+                }
+                else
+                {
+                    // Damage the player.
+                    player.hurt(new DamageSource(damageType), 1);
+    
+                    // Create and apply the effect.
+                    MobEffectInstance effectInstance = new MobEffectInstance(effect, effect.getDuration(), 0, false, true, true);
+                    player.addEffect(effectInstance);
+                }
             }
 
             // Store current position for the next check.
