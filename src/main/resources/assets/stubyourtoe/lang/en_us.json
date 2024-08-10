@@ -1,5 +1,7 @@
 {
     "effect.stubyourtoe.stubbed_toe1": "Hurt Toe",
     "effect.stubyourtoe.stubbed_toe2": "Swollen Toe",
-    "effect.stubyourtoe.stubbed_toe3": "Where's My Toe?"
+    "effect.stubyourtoe.stubbed_toe3": "Where's My Toe?",
+    "death.attack.stubbed_toe": "%s stubbed their toe at an unfortunate time",
+    "death.attack.stubbed_toe.player": "%s stubbed their toe whilst trying to escape from %s"
 }
