@@ -75,9 +75,27 @@ public class StubbedToe extends MobEffect {
         AttributeInstance speedAttribute = entity.getAttribute(Attributes.MOVEMENT_SPEED);
         if (speedAttribute != null)
         {
-            speedAttribute.removeModifier(ATTRIBUTE_UUID);
-            AttributeModifier attribute = new AttributeModifier(ATTRIBUTE_UUID, "STUBBED_TOE", disableMovement ? -1.0d : (-1.0d + Config.stubbedToeSpeedModifier), Operation.MULTIPLY_TOTAL);
-            speedAttribute.addTransientModifier(attribute);
+            double speed = disableMovement ? -1.0d : (-1.0d + Config.stubbedToeSpeedModifier);
+
+            boolean addModifier = false;
+            AttributeModifier modifier = speedAttribute.getModifier(ATTRIBUTE_UUID);
+            if (modifier == null)
+            {
+                addModifier = true;
+            }
+            else
+            {
+                if (modifier.getAmount() != speed)
+                {
+                    speedAttribute.removeModifier(modifier);
+                }
+            }
+
+            if (addModifier)
+            {
+                AttributeModifier attribute = new AttributeModifier(ATTRIBUTE_UUID, "STUBBED_TOE", speed, Operation.MULTIPLY_TOTAL);
+                speedAttribute.addTransientModifier(attribute);
+            }
         }
 
         // Ensure the player is not sprinting if it is disabled.
