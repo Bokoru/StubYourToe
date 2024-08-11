@@ -1,9 +1,7 @@
 package art.bokoru.stubyourtoe;
 
 import com.alrex.parcool.api.SoundEvents;
-import com.alrex.parcool.common.action.impl.Dive;
 import com.alrex.parcool.common.action.impl.Roll;
-import com.alrex.parcool.common.capability.IStamina;
 import com.alrex.parcool.common.capability.Parkourability;
 import com.alrex.parcool.common.network.StartBreakfallMessage;
 
@@ -196,7 +194,7 @@ public class StubYourToe
                         StartBreakfallMessage.send((ServerPlayer)player, false);
                     }
                 }
-                
+
                 // Damage the player.
                 player.hurt(new DamageSource(damageType), 1);
 

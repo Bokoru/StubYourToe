@@ -4,7 +4,6 @@ import java.util.UUID;
 
 import javax.annotation.Nonnull;
 
-import com.alrex.parcool.common.action.impl.Dive;
 import com.alrex.parcool.common.action.impl.Roll;
 import com.alrex.parcool.common.capability.Parkourability;
 
