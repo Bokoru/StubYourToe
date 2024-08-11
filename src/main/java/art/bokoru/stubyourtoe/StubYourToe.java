@@ -5,6 +5,7 @@ import com.alrex.parcool.common.action.impl.Dive;
 import com.alrex.parcool.common.action.impl.Roll;
 import com.alrex.parcool.common.capability.IStamina;
 import com.alrex.parcool.common.capability.Parkourability;
+import com.alrex.parcool.common.network.StartBreakfallMessage;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.core.Holder;
@@ -12,6 +13,7 @@ import net.minecraft.core.Registry;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.effect.MobEffect;
@@ -95,6 +97,10 @@ public class StubYourToe
         // Get the player to test for the movement of.
         Player player = playerTickEvent.player;
 
+        // Only execute on server.
+        if (player.level().isClientSide())
+            return;
+
         // Players in creative mode should not stub their toe.
         if (player.isCreative())
             return;
@@ -119,7 +125,7 @@ public class StubYourToe
             Parkourability parkourability = Parkourability.get(player);
             if (parkourability != null)
             {
-                if(parkourability.get(Dive.class).isDoing())
+                if(parkourability.get(Roll.class).isDoing())
                     return;
             }
         }
@@ -184,24 +190,19 @@ public class StubYourToe
                     if (parkourability != null)
                     {
                         // Play the sound.
-                        // player.playSound(SoundEvents.ROLL.get(), 1.0f, 1.0f);
+                        player.playSound(SoundEvents.ROLL.get(), 1.0f, 1.0f);
                         
                         // Start a roll.
-                        parkourability.getAdditionalProperties().onJump();
-                        parkourability.get(Dive.class).onJump(player, parkourability, IStamina.get(player));
+                        StartBreakfallMessage.send((ServerPlayer)player, false);
                     }
                 }
                 
-                // This logic can only be run on the server.
-                if (!player.level().isClientSide()) 
-                {
-                    // Damage the player.
-                    player.hurt(new DamageSource(damageType), 1);
-    
-                    // Create and apply the effect.
-                    MobEffectInstance effectInstance = new MobEffectInstance(effect, effect.getDuration(), 0, false, true, true);
-                    player.addEffect(effectInstance);
-                }
+                // Damage the player.
+                player.hurt(new DamageSource(damageType), 1);
+
+                // Create and apply the effect.
+                MobEffectInstance effectInstance = new MobEffectInstance(effect, effect.getDuration(), 0, false, true, true);
+                player.addEffect(effectInstance);
             }
 
             // Store current position for the next check.

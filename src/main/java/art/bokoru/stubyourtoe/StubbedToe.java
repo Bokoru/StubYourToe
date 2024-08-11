@@ -55,68 +55,80 @@ public class StubbedToe extends MobEffect {
 
     @Override
     public void applyEffectTick(@Nonnull LivingEntity entity, int amplifier) {
-
-        if (entity instanceof Player player)
-        {
-            // Ensure the player is not sprinting if it is disabled.
-            if (disableSprint)
+        if (entity instanceof Player player) {
+            
+            // Get the effect instance.
+            MobEffectInstance inst = player.getEffect(this);
+            if (inst == null)
+                return;
+            
+            // Check if the effect is active.
+            if (inst.getDuration() > 0)
             {
-                player.setSprinting(false);
-            }
-
-            // Ensure only the highest tier of stubbed toe is active at any moment.
-            if (previousTier != null)
-            {
-                StubbedToe previous = (StubbedToe)previousTier.get();
-                if (entity.hasEffect(previous))
-                {
-                    entity.removeEffect(previous);
-                }
-
-                if (previous.previousTier != null)
-                {
-                    previous = (StubbedToe)previous.previousTier.get();
-                    if (entity.hasEffect(previous))
-                    {
-                        entity.removeEffect(previous);
+                // Ensure the player is not sprinting if it is disabled.
+                if (disableSprint) {
+                    if (player.isSprinting()) {
+                        player.setSprinting(false);
                     }
                 }
-            }
 
-            // Ensure the correct speed modifier is applied.
-            AttributeInstance speedAttribute = entity.getAttribute(Attributes.MOVEMENT_SPEED);
-            if (speedAttribute != null)
-            {
-                double speed = disableMovement ? -1.0d : (-1.0d + Config.stubbedToeSpeedModifier);
+                // Ensure only the highest tier of stubbed toe is active at any moment.
+                if (previousTier != null) {
+                    StubbedToe previous = (StubbedToe)previousTier.get();
+                    if (entity.hasEffect(previous)) {
+                        entity.removeEffect(previous);
+                    }
 
-                boolean addModifier = false;
-                AttributeModifier modifier = speedAttribute.getModifier(ATTRIBUTE_UUID);
-                if (modifier == null) {
-                    addModifier = true;
-
-                    // Avoid adding speed modifier if the player is still doing a roll.
-                    if (StubYourToe.hasParcool)
-                    {
-                        Parkourability parkourability = Parkourability.get(player);
-                        if (parkourability != null) {
-                            if (parkourability.get(Dive.class).isDoing()) {
-                                addModifier = false;
-                            }
+                    if (previous.previousTier != null) {
+                        previous = (StubbedToe)previous.previousTier.get();
+                        if (entity.hasEffect(previous)) {
+                            entity.removeEffect(previous);
                         }
                     }
                 }
-                else {
-                    if (modifier.getAmount() != speed)
-                    {
-                        speedAttribute.removeModifier(modifier);
+
+                // Ensure the correct speed modifier is applied.
+                AttributeInstance speedAttribute = entity.getAttribute(Attributes.MOVEMENT_SPEED);
+                if (speedAttribute != null) {
+                    // Calculate the amount to add for the speed attribute.
+                    double speed = disableMovement ? -1.0d : (-1.0d + Config.stubbedToeSpeedModifier);
+
+                    // Add the speed modifier if it hasn't already been added.
+                    boolean addModifier = false;
+                    AttributeModifier modifier = speedAttribute.getModifier(ATTRIBUTE_UUID);
+                    if (modifier == null) {
                         addModifier = true;
+
+                        // Avoid adding speed modifier if the player is still doing a roll.
+                        if (StubYourToe.hasParcool && Config.enableRollOnStub) {
+                            Parkourability parkourability = Parkourability.get(player);
+                            if (parkourability != null) {
+                                if (parkourability.get(Roll.class).isDoing()) {
+                                    addModifier = false;
+                                }
+                            }
+                        }
+                    }
+                    else {
+                        // If the speed modifier is present but for the wrong amount, remove it and readd it.
+                        if (modifier.getAmount() != speed) {
+                            speedAttribute.removeModifier(modifier);
+                            addModifier = true;
+                        }
+                    }
+
+                    if (addModifier) {
+                        AttributeModifier attribute = new AttributeModifier(ATTRIBUTE_UUID, "STUBBED_TOE", speed, Operation.MULTIPLY_TOTAL);
+                        speedAttribute.addTransientModifier(attribute);
                     }
                 }
-
-                if (addModifier)
-                {
-                    AttributeModifier attribute = new AttributeModifier(ATTRIBUTE_UUID, "STUBBED_TOE", speed, Operation.MULTIPLY_TOTAL);
-                    speedAttribute.addTransientModifier(attribute);
+            }
+            else // If the effect is deactivating on this tick
+            {
+                // Apply previous tier if available.
+                if (previousTier != null) {
+                    StubbedToe effect = (StubbedToe) previousTier.get();
+                    entity.addEffect(new MobEffectInstance(effect, effect.getDuration(), 0, false, true, true));
                 }
             }
         }
@@ -127,27 +139,16 @@ public class StubbedToe extends MobEffect {
         super.removeAttributeModifiers(entity, attributeMap, amplifier);
 
         // Remove any previous speed modifications done with this effect.
-        AttributeInstance speedAttribute = entity.getAttribute(Attributes.MOVEMENT_SPEED);
+        AttributeInstance speedAttribute = attributeMap.getInstance(Attributes.MOVEMENT_SPEED);
         if (speedAttribute != null)
         {
             speedAttribute.removeModifier(ATTRIBUTE_UUID);
-        }
-
-        // Check if the effect was removed by the clear command
-        if (!entity.getPersistentData().getBoolean("stubbed_toe_cleared")) {
-            // Apply previous tier if available.
-            if (previousTier != null) {
-                StubbedToe effect = (StubbedToe) previousTier.get();
-                entity.addEffect(new MobEffectInstance(effect, effect.getDuration(), 0, false, true, true));
-            }
-        } else {
-            entity.getPersistentData().remove("stubbed_toe_cleared");
         }
     }
 
     @Override
     public boolean isDurationEffectTick(int duration, int amplifier) {
         // Ensure this runs every tick.
-        return duration > 0;
+        return duration >= 0;
     }
 }
